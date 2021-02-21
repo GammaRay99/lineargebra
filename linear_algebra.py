@@ -1,12 +1,12 @@
 """
 A math module of linear algebra, implementing vectors and matrix.
-I could probably have used numpy to do this, but i wanted to fully understand
-how it works.
+I could probably have used numpy to do this, but i wanted to have  depth understanding
+of how it works.
 """
 import math
 
 
-class Vector:
+class Vector(object):
     """
     A vector is a 1 dimensionnal array with N number of elements, represented as following:
          _    _
@@ -19,12 +19,13 @@ class Vector:
         |_ xn _|
 
     This implementation supports:
+        -Element getter        (A_vector[N]) 0 < N: int < len(A_vector)
         -Vector equality       (A_vector == B_vector)
         -Vector addition       (A_vector + B_vector)
         -Vector substraction   (A_vector - B_vector)
         -Scaling operation     (A_vector * N) N: int
         -Dot product           (A_vector * B_vector)
-        -Length of the array   (len(A_vector))
+        -Length of the vector  (len(A_vector))
         -Vector inversion      (A_vector.inverted())
         -Vector normalization  (A_vector.normalize())
         -Size getter of vector (A_vector.size)
@@ -32,19 +33,16 @@ class Vector:
         -Size limiter          (A_vector.size_limit(N)) N: int
     """
     def __init__(self, pos):
-        self._content = pos
         try:
-            self._content[0]
+            pos[0]
         except TypeError:
-            raise TypeError("Cannot convert non-iterable object to Vectors.")
+            raise TypeError(f"Cannot convert non-iterable object to a {type(self)}.")
 
-        if len(self._content) >= 2:
-            self.x = self._content[0]
-            self.y = self._content[1]
+        if type(pos) == Matrix:
+            self._content = list(map(lambda el: el[0], pos))
         else:
-            self.x = None
-            self.y = None
-
+            self._content = pos
+        
     def __repr__(self):
         return f"Vector({'; '.join([str(el) for el in self])})"
 
@@ -52,35 +50,35 @@ class Vector:
         return self._content[item]
 
     def __eq__(self, other):
-        if type(other) != Vector:
-            raise TypeError(f"Cannot compare a Vector to an object-type {type(other)}")
+        if type(self) != type(other):
+            raise TypeError(f"Cannot compare a {type(self)} to an object-type {type(other)}")
 
-        if self.__repr__() == other.__repr__():
+        if self._content == other._content:
             return True
         return False
 
     def __add__(self, other):
         """
         U(4; 3) + V(3; 2) = W(U0 + V0; U1 + V1) = W(5; 5)
-        :type other: Vector
-        :rtype: Vector
+        :type other: Vector / Vector2D / Vector3D ( needs to be the same as self )
+        :rtype: type(self)
         """
-        if type(other) != Vector:
-            raise TypeError(f"Cannot add vector to an object-type {type(other)}.")
+        if type(other) != type(self):
+            raise TypeError(f"Cannot add {type(self)} to an object-type {type(other)}.")
 
         if len(other) != len(self):
             raise ValueError("Cannot add vectors if the vectors does not have the same length")
 
-        return Vector(list(map(lambda x, y: x + y, self, other)))
+        return type(self)(list(map(lambda x, y: x + y, self, other)))
 
     def __sub__(self, other):
         """
         U(4; 3) - V(3; 2) = W(U0 - V0; U1 - V1) = W(-1; 1)
-        :type other: Vector
-        :rtype: Vector
+        :type other: type(self)
+        :rtype: type(self)
         """
-        if type(other) != Vector:
-            raise ValueError("Cannot add vector if the vectors does not have the same length")
+        if type(other) != type(self):
+            raise TypeError(f"Cannot add {type(self)} to an object-type {type(other)}.")
 
         return self.__add__(other.inverted())
 
@@ -88,7 +86,9 @@ class Vector:
         """
         Different result will be returned in function of the type of other.
         If it's a single number, this will return self scaled to other,
-        if it's another vector, this will return self dot other.
+        if it's another Vector, this will return self dot other.
+        EDIT: other doesn't need to be the same exact Vector-type, since dot
+        product works even with differet length.
         """
         if type(other) in (int, float):
             return self._scaled(other)
@@ -97,11 +97,11 @@ class Vector:
             return self._dot(other)
 
         else:
-            raise TypeError(f"Cannot multiply vector by {type(other)}")
+            raise TypeError(f"Cannot multiply {type(self)} by {type(other)}")
 
     def __len__(self):
         """
-        :return: the lenght of the array (dimension - 1)
+        :return: the lenght of the array
         :rtype: int
         """
         return len(self._content)
@@ -113,9 +113,9 @@ class Vector:
         :rtype: Vector
         """
         if type(n) not in (int, float):
-            raise TypeError(f"Cannot scale a Vector to an object-type {type(n)}.")
+            raise TypeError(f"Cannot scale a {type(self)} to an object-type {type(n)}.")
 
-        return Vector(list(map(lambda el: el * n, self)))
+        return type(self)(list(map(lambda el: el * n, self)))
 
     def _dot(self, v):
         """
@@ -128,9 +128,9 @@ class Vector:
     def inverted(self):
         """
         :return: The inverted instance of vector
-        :rtype:
+        :rtype: type(self)
         """
-        return Vector(list(map(lambda el: el*-1, self)))
+        return type(self)(list(map(lambda el: el*-1, self)))
 
     def normalized(self):
         """
@@ -139,7 +139,9 @@ class Vector:
         :return: The normalized vector
         :rtype: Vector
         """
-        return Vector(list(map(lambda el: el / self.size, self)))
+        if self.size == 0:
+            return None
+        return type(self)(list(map(lambda el: el / self.size, self)))
 
     @property
     def size(self):
@@ -166,12 +168,81 @@ class Vector:
         :param n: number
         """
         if type(n) not in (int, float):
-            raise TypeError(f"Cannot limit a Vector to an object-type {type(n)}.")
+            raise TypeError(f"Cannot limit a {type(self)} to an object-type {type(n)}.")
 
-        self.size = n
+        if self.size > n:
+            self.size = n
 
 
-class Matrix:
+    def to_matrix(self):
+        """
+        Transform the current vecor in matrix of n rows and 1 column
+        :rtype: Matrix
+        """
+        return Matrix([[el] for el in self])
+
+
+class Vector2D(Vector):
+    """
+    This is pretty much the same implementation as Vector,
+    exepts the fact that it only supports 2 elements, and has
+    a few more features:
+    properties:
+        -self.x
+        -self.y
+        They are the same as self[0] and self[1].
+    method:
+        -self.to_vector3d()
+        Pretty explicit, the z part of the 3d vector will be set at 0
+    """
+    def __init__(self, pos):
+        super().__init__(pos)
+
+        if len(pos) != 2:
+            raise ValueError(f"Cannot create a 2D Vector with {len(pos)} elemets, Vectors2D only supports 2 elements")
+
+        self.x = self._content[0]
+        self.y = self._content[1]
+
+    def __repr__(self):
+        return f"Vector2D({'; '.join([str(el) for el in self])})"
+
+    def to_vector3d(self):
+        return Vector3D(list(self._content) + [0])
+
+
+class Vector3D(Vector):
+    """
+    This is pretty much the same implementation as Vector,
+    exepts the fact that it only supports 2 elements, and has
+    a few more features:
+    properties:
+        -self.x
+        -self.y
+        -self.z
+        They are the same as self[0], self[1] and self[2].
+    method:
+        -self.to_vector2d()
+        Pretty explicit, the z part will be deleted
+    """
+    def __init__(self, pos):
+        super().__init__(pos)
+
+        if len(pos) != 3:
+            raise ValueError(f"Cannot create a 3D Vector with {len(pos)} elemets, Vectors3D only supports 3 elements")
+
+        self.x = self._content[0]
+        self.y = self._content[1]
+        self.z = self._content[2]
+
+    def __repr__(self):
+        return f"Vector3D({'; '.join([str(el) for el in self])})"
+
+    def to_vector2d(self):
+        return Vector2D(self.content[:2])
+
+
+class Matrix(object):
     """
     A Matrix is a 2-dimensionnal array containing N number of 1-dimensionnal arrays, represented as following:
         _          _
@@ -208,6 +279,9 @@ class Matrix:
 
     def __getitem__(self, item):
         return self._content[item]
+
+    def __len__(self):
+        return self.rows
 
     def __eq__(self, other):
         if type(other) != Matrix:

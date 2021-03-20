@@ -130,7 +130,9 @@ class Vector(object):
         :return: The inverted instance of vector
         :rtype: type(self)
         """
-        return type(self)(list(map(lambda el: el*-1, self)))
+        content = self._content.copy()
+        content.reverse()
+        return type(self)(content)
 
     def normalized(self):
         """
